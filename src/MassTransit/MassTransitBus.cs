@@ -356,7 +356,7 @@ namespace MassTransit
             readonly IHost _host;
             readonly HostHandle _hostHandle;
             readonly ILogContext _logContext;
-            bool _stopped;
+            int _stopping;
 
             public Handle(IHost host, HostHandle hostHandle, MassTransitBus bus, IBusObserver busObserver, ILogContext logContext)
             {
@@ -375,7 +375,7 @@ namespace MassTransit
             {
                 LogContext.SetCurrentIfNull(_logContext);
 
-                if (_stopped)
+                if (Interlocked.Increment(ref _stopping) > 1)
                     return;
 
                 await _busObserver.PreStop(_bus).ConfigureAwait(false);
@@ -402,8 +402,6 @@ namespace MassTransit
                 }
 
                 LogContext.Info?.Log("Bus stopped: {HostAddress}", _host.Address);
-
-                _stopped = true;
 
                 _bus._busState = BusState.Stopped;
                 _bus._healthMessage = "stopped";
