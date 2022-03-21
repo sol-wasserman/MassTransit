@@ -377,35 +377,40 @@ namespace MassTransit
                 if (_stopped)
                     return;
 
-                await _busObserver.PreStop(_bus).ConfigureAwait(false);
-
-                try
-                {
-                    await _hostHandle.Stop(cancellationToken).ConfigureAwait(false);
-
-                    await _busObserver.PostStop(_bus).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                }
-                catch (Exception exception)
-                {
-                    await _busObserver.StopFaulted(_bus, exception).ConfigureAwait(false);
-
-                    LogContext.Warning?.Log(exception, "Bus stop faulted: {HostAddress}", _host.Address);
-
-                    _bus._busState = BusState.Faulted;
-                    _bus._healthMessage = $"stop faulted: {exception.Message}";
-
-                    throw;
-                }
-
-                LogContext.Info?.Log("Bus stopped: {HostAddress}", _host.Address);
+                await Stop(cancellationToken).ConfigureAwait(false);
 
                 _stopped = true;
 
                 _bus._busState = BusState.Stopped;
                 _bus._healthMessage = "stopped";
+
+                async Task Stop(CancellationToken cancellationToken)
+                {
+                    await _busObserver.PreStop(_bus).ConfigureAwait(false);
+
+                    try
+                    {
+                        await _hostHandle.Stop(cancellationToken).ConfigureAwait(false);
+
+                        await _busObserver.PostStop(_bus).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                    }
+                    catch (Exception exception)
+                    {
+                        await _busObserver.StopFaulted(_bus, exception).ConfigureAwait(false);
+
+                        LogContext.Warning?.Log(exception, "Bus stop faulted: {HostAddress}", _host.Address);
+
+                        _bus._busState = BusState.Faulted;
+                        _bus._healthMessage = $"stop faulted: {exception.Message}";
+
+                        throw;
+                    }
+
+                    LogContext.Info?.Log("Bus stopped: {HostAddress}", _host.Address);
+                }
             }
 
             async Task<BusReady> ReadyOrNot(Task<HostReady> ready)
