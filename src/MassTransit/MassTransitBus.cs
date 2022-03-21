@@ -356,6 +356,7 @@ namespace MassTransit
             readonly HostHandle _hostHandle;
             readonly ILogContext _logContext;
             bool _stopped;
+            Task _stopping = Task.CompletedTask;
 
             public Handle(IHost host, HostHandle hostHandle, MassTransitBus bus, IBusObserver busObserver, ILogContext logContext)
             {
@@ -377,7 +378,15 @@ namespace MassTransit
                 if (_stopped)
                     return;
 
-                await Stop(cancellationToken).ConfigureAwait(false);
+                lock (_stopping)
+                {
+                    if (_stopping.IsCompleted)
+                    {
+                        _stopping = Stop(cancellationToken);
+                    }
+                }
+
+                await _stopping.ConfigureAwait(false);
 
                 _stopped = true;
 
